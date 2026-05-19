@@ -3,7 +3,6 @@ package com.uday.authservice.service;
 import com.uday.authservice.entity.User;
 import com.uday.authservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NullMarked;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
