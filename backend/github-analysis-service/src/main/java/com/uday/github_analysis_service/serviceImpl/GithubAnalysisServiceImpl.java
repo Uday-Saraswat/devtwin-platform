@@ -6,6 +6,7 @@ import com.uday.github_analysis_service.service.GithubAnalysisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,13 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
             }
         }
 
+        int developerScore = calculateDeveloperScore(totalRepos, totalStars,
+                totalForks, languages.size());
+
+        String level = getDeveloperLevel(developerScore);
+
+        List<String> strengths = generateStrengths(totalRepos, totalStars, languages.size());
+
         Map<String, Object> response = new HashMap<>();
 
         response.put("username", username);
@@ -38,7 +46,58 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
         response.put("totalStars", totalStars);
         response.put("totalForks", totalForks);
         response.put("languagesUsed", languages);
+        response.put("developerScore", developerScore);
+        response.put("developerLevel", level);
+        response.put("strengths", strengths);
 
         return response;
     }
+
+    private int calculateDeveloperScore(int repos, int stars, int forks, int languageCount) {
+
+        int score = 0;
+        score += repos * 2;
+        score += stars * 3;
+        score += forks * 2;
+        score += languageCount * 5;
+
+        if (score > 100) {
+            score = 100;
+        }
+
+        return score;
+    }
+
+    private String getDeveloperLevel(int score) {
+
+        if (score >= 80) {
+            return "Advanced Developer";
+        }
+
+        if (score >= 50) {
+            return "Intermediate Developer";
+        }
+
+        return "Beginner Developer";
+    }
+
+    private List<String> generateStrengths(int repos, int stars, int languageCount) {
+
+        List<String> strengths = new ArrayList<>();
+
+        if (repos >= 10) {
+            strengths.add("Good Repository Activity");
+        }
+
+        if (stars >= 5) {
+            strengths.add("Popular Repositories");
+        }
+
+        if (languageCount >= 3) {
+            strengths.add("Good Language Diversity");
+        }
+
+        return strengths;
+    }
+
 }
