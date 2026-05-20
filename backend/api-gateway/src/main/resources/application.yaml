@@ -17,6 +17,13 @@ spring:
               filters:
                 - PreserveHostHeader
 
+            - id: github-analysis-service
+              uri: lb://GITHUB-ANALYSIS-SERVICE
+              predicates:
+                - Path=/github/**
+              filters:
+                - PreserveHostHeader
+
 eureka:
   client:
     service-url:
