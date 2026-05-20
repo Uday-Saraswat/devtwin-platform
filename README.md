@@ -233,18 +233,6 @@ POST /auth/register
 
 ---
 
-# 📸 Screenshots
-
-Add screenshots here later.
-
-Example:
-- Login Page
-- Dashboard
-- Analytics Charts
-- AI Insights
-
----
-
 # 📖 Learning Goals
 
 This project is focused on mastering:
