@@ -1,6 +1,5 @@
 package com.uday.authservice.service;
 
-import com.uday.authservice.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -11,8 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 @Service
 public class JwtService {
@@ -23,12 +20,9 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
-    public String generateToken(User user) {
+    public String generateToken(String email) {
 
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("role", user.getRole());
-
-        return Jwts.builder() .setClaims(claims).setSubject(user.getEmail())
+        return Jwts.builder().setSubject(email)
                 .setIssuedAt(new Date()).setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256).compact();
     }
