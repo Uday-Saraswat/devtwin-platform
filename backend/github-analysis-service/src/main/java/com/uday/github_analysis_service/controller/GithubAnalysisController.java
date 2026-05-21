@@ -21,5 +21,10 @@ public class GithubAnalysisController {
 
         return ResponseEntity.ok(githubAnalysisService.analyzeProfile(username));
     }
-    
+
+    @GetMapping("/resume/{username}")
+    public ResponseEntity<?> generateResume(@PathVariable String username) {
+        return ResponseEntity.ok(githubAnalysisService.generateResume(username));
+    }
+
 }
