@@ -1,15 +1,13 @@
 package com.uday.github_analysis_service.serviceImpl;
 
 import com.uday.github_analysis_service.client.GithubClient;
+import com.uday.github_analysis_service.dto.GithubEventResponse;
 import com.uday.github_analysis_service.dto.GithubRepoResponse;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +37,10 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
 
         List<String> strengths = generateStrengths(totalRepos, totalStars, languages.size());
 
+        List<GithubEventResponse> events = githubClient.getUserEvents(username);
+
+        Map<String, Object> consistencyData = analyzeConsistency(events);
+
         Map<String, Object> response = new HashMap<>();
 
         response.put("username", username);
@@ -49,6 +51,7 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
         response.put("developerScore", developerScore);
         response.put("developerLevel", level);
         response.put("strengths", strengths);
+        response.putAll(consistencyData);
 
         return response;
     }
@@ -98,6 +101,41 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
         }
 
         return strengths;
+    }
+
+    private Map<String, Object> analyzeConsistency(List<GithubEventResponse> events) {
+
+        int totalCommits = 0;
+        Set<String> activeDays = new HashSet<>();
+
+        for (GithubEventResponse event : events) {
+            if ("PushEvent".equals(event.getType())) {
+                totalCommits++;
+                activeDays.add(event.getCreated_at().substring(0, 10));
+            }
+        }
+
+        int consistencyScore = Math.min(100, (totalCommits * 2) + (activeDays.size() * 3));
+
+        String developerType;
+
+        if (consistencyScore >= 80) {
+            developerType = "Highly Consistent Developer";
+        } else if (consistencyScore >= 50) {
+            developerType = "Consistent Contributor";
+        } else {
+            developerType = "Occasional Contributor";
+        }
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("consistencyScore", consistencyScore);
+        response.put("totalCommitsThisMonth", totalCommits);
+        response.put("activeDays", activeDays.size());
+        response.put("developerType", developerType);
+
+
+        return response;
     }
 
 }
