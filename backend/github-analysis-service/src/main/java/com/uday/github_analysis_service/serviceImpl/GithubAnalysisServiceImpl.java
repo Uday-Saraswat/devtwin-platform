@@ -3,6 +3,8 @@ package com.uday.github_analysis_service.serviceImpl;
 import com.uday.github_analysis_service.client.GithubClient;
 import com.uday.github_analysis_service.dto.GithubEventResponse;
 import com.uday.github_analysis_service.dto.GithubRepoResponse;
+import com.uday.github_analysis_service.dto.GithubUserResponse;
+import com.uday.github_analysis_service.dto.ResumeResponse;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -136,6 +138,43 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
 
 
         return response;
+    }
+
+    @Override
+    public ResumeResponse generateResume(String username) {
+
+        //FETCH USER
+        GithubUserResponse user = githubClient.getUser(username);
+
+        //FETCH REPOSITORIES
+        List<GithubRepoResponse> repos = githubClient.getUserRepositories(username);
+
+        //TOP REPOSITORIES
+        List<String> topRepositories = repos.stream().sorted((repo1, repo2) ->
+                        repo2.getStargazers_count() - repo1.getStargazers_count()).limit(5)
+                .map(GithubRepoResponse::getName).toList();
+
+        //TOP LANGUAGES
+
+        List<String> topLanguages = repos.stream().map(GithubRepoResponse::getLanguage).filter(Objects::nonNull)
+                .distinct().toList();
+
+        // DEVELOPER SCORE
+
+        int totalStars = repos.stream().mapToInt(GithubRepoResponse::getStargazers_count).sum();
+        int totalForks = repos.stream().mapToInt(GithubRepoResponse::getForks_count).sum();
+        int developerScore = calculateDeveloperScore(repos.size(), totalStars, totalForks, topLanguages.size());
+
+        // DEVELOPER LEVEL
+        String developerLevel = getDeveloperLevel(developerScore);
+
+        //BUILD RESPONSE
+
+        return ResumeResponse.builder().name(user.getName()).githubUsername(user.getLogin())
+                .bio(user.getBio()).publicRepos(user.getPublic_repos()).followers(user.getFollowers())
+                .topLanguages(topLanguages).topRepositories(topRepositories)
+                .developerLevel(developerLevel).developerScore(developerScore).build();
+
     }
 
 }
