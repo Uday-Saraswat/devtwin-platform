@@ -1,15 +1,17 @@
 package com.uday.github_analysis_service.serviceImpl;
 
+
 import com.uday.github_analysis_service.client.GithubClient;
-import com.uday.github_analysis_service.dto.GithubEventResponse;
-import com.uday.github_analysis_service.dto.GithubRepoResponse;
-import com.uday.github_analysis_service.dto.GithubUserResponse;
-import com.uday.github_analysis_service.dto.ResumeResponse;
+import com.uday.github_analysis_service.dto.*;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfWriter;
 
+import java.io.ByteArrayOutputStream;
 import java.util.*;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -175,6 +177,102 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
                 .topLanguages(topLanguages).topRepositories(topRepositories)
                 .developerLevel(developerLevel).developerScore(developerScore).build();
 
+    }
+
+    @Override
+    public CommitConsistencyResponse getCommitConsistency(String username) {
+        List<GithubEventResponse> events = githubClient.getUserEvents(username);
+
+        //Total Events
+        int totalEvents = events.size();
+
+        //ACTIVE DAYS (unique dates)
+        Set<String> activeDaysSet = new HashSet<>();
+        int commitCount = 0;
+        for (GithubEventResponse event : events) {
+
+            if ("PushEvent".equalsIgnoreCase(event.getType())) {
+
+                commitCount++; // each push = activity unit
+
+                activeDaysSet.add(event.getCreated_at().substring(0, 10));
+            }
+        }
+
+        int activeDays = activeDaysSet.size();
+
+        // AVERAGE COMMITS PER DAY
+        double avgCommits = (activeDays == 0 ? 0 : (double) commitCount / activeDays);
+
+        //CONSISTENCY SCORE (simple formula)
+        int consistencyScore = Math.min(100, (activeDays * 6) + (commitCount * 3));
+
+        return CommitConsistencyResponse.builder()
+                .username(username)
+                .totalEvents(totalEvents)
+                .activeDays(activeDays)
+                .averageCommitsPerDay(avgCommits)
+                .consistencyScore(consistencyScore)
+                .build();
+    }
+
+    @Override
+    public byte[] generateResumePdf(String username) {
+
+        ResumeResponse resume = generateResume(username);
+
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            Document document = new Document();
+            PdfWriter.getInstance(document, outputStream);
+            document.open();
+
+            //TITLE
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20);
+            Paragraph title = new Paragraph("GitHub Developer Resume", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            document.add(title);
+            document.add(new Paragraph(" "));
+
+            //BASIC DETAILS
+            document.add(new Paragraph("Name: " + resume.getName()));
+
+            document.add(new Paragraph("GitHub Username: " + resume.getGithubUsername()));
+
+            document.add(new Paragraph("Bio: " + resume.getBio()));
+
+            document.add(new Paragraph("Followers: " + resume.getFollowers()));
+
+            document.add(new Paragraph("Public Repositories: " + resume.getPublicRepos()));
+
+            document.add(new Paragraph("Developer Score: " + resume.getDeveloperScore()));
+
+            document.add(new Paragraph("Developer Level: " + resume.getDeveloperLevel()));
+
+            document.add(new Paragraph(" "));
+
+            //TOP LANGUAGES
+            document.add(new Paragraph("Top Languages:"));
+
+            for (String language : resume.getTopLanguages()) {
+                document.add(new Paragraph("- " + language));
+            }
+            document.add(new Paragraph(" "));
+
+            //TOP REPOSITORIES
+            document.add(new Paragraph("Top Repositories:"));
+
+            for (String repo : resume.getTopRepositories()) {
+                document.add(new Paragraph("- " + repo));
+            }
+
+            document.close();
+
+            return outputStream.toByteArray();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate PDF");
+        }
     }
 
 }
