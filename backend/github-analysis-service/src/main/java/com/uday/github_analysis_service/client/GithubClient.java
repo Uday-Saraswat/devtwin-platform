@@ -1,6 +1,7 @@
 package com.uday.github_analysis_service.client;
 
 import com.uday.github_analysis_service.config.GithubFeignConfig;
+import com.uday.github_analysis_service.dto.GithubCommitResponse;
 import com.uday.github_analysis_service.dto.GithubEventResponse;
 import com.uday.github_analysis_service.dto.GithubRepoResponse;
 import com.uday.github_analysis_service.dto.GithubUserResponse;
@@ -21,5 +22,8 @@ public interface GithubClient {
 
     @GetMapping("/users/{username}")
     GithubUserResponse getUser(@PathVariable String username);
+
+    @GetMapping("/repos/{owner}/{repo}/commits")
+    List<GithubCommitResponse> getRepoCommits(@PathVariable String owner, @PathVariable String repo);
 
 }

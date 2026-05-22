@@ -8,4 +8,6 @@ public class GithubEventResponse {
     private String type;
 
     private String created_at;
+
+    private GithubEventPayload payload;
 }
