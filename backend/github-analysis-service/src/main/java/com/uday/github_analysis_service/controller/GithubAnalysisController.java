@@ -2,15 +2,15 @@ package com.uday.github_analysis_service.controller;
 
 
 import com.uday.github_analysis_service.dto.CommitConsistencyResponse;
+import com.uday.github_analysis_service.dto.DeveloperRankingResponse;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/github")
@@ -41,6 +41,12 @@ public class GithubAnalysisController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=resume.pdf")
                 .contentType(MediaType.APPLICATION_PDF).body(pdf);
+    }
+
+    @PostMapping("/rank")
+    public ResponseEntity<List<DeveloperRankingResponse>> rankDevelopers(@RequestBody List<String> usernames) {
+
+        return ResponseEntity.ok(githubAnalysisService.rankDevelopers(usernames));
     }
 
 }

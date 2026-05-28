@@ -4,7 +4,10 @@ package com.uday.github_analysis_service.serviceImpl;
 import com.uday.github_analysis_service.client.GithubClient;
 import com.uday.github_analysis_service.dto.*;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
+import com.uday.github_analysis_service.service.GithubAsyncService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfWriter;
@@ -12,12 +15,15 @@ import com.itextpdf.text.pdf.PdfWriter;
 import java.io.ByteArrayOutputStream;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
 public class GithubAnalysisServiceImpl implements GithubAnalysisService {
 
     private final GithubClient githubClient;
+
+    private final GithubAsyncService githubAsyncService;
 
     @Override
     public Map<String, Object> analyzeProfile(String username) {
@@ -143,13 +149,23 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     }
 
     @Override
+    @Cacheable(value = "resume", key = "#username")
     public ResumeResponse generateResume(String username) {
 
+        System.out.println("Calling GitHub API...");
+
         //FETCH USER
-        GithubUserResponse user = githubClient.getUser(username);
+        CompletableFuture<GithubUserResponse> userFuture = githubAsyncService.getGithubUserAsync(username);
 
         //FETCH REPOSITORIES
-        List<GithubRepoResponse> repos = githubClient.getUserRepositories(username);
+        CompletableFuture<List<GithubRepoResponse>> repoFuture = githubAsyncService.getGithubReposAsync(username);
+
+        //WAIT FOR BOTH
+        CompletableFuture.allOf(userFuture, repoFuture).join();
+
+        //GET RESULTS
+        GithubUserResponse user = userFuture.join();
+        List<GithubRepoResponse> repos = repoFuture.join();
 
         //TOP REPOSITORIES
         List<String> topRepositories = repos.stream().sorted((repo1, repo2) ->
@@ -180,6 +196,7 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     }
 
     @Override
+    @Cacheable(value = "commitConsistency", key = "#username")
     public CommitConsistencyResponse getCommitConsistency(String username) {
         List<GithubEventResponse> events = githubClient.getUserEvents(username);
 
@@ -275,4 +292,37 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
         }
     }
 
+    @Override
+    public List<DeveloperRankingResponse> rankDevelopers(List<String> usernames) {
+
+        List<DeveloperRankingResponse> rankings = new ArrayList<>();
+
+        for (String username : usernames) {
+
+            try {
+
+                ResumeResponse resume = generateResume(username);
+                rankings.add(DeveloperRankingResponse.builder()
+                        .username(username)
+                        .score(resume.getDeveloperScore())
+                        .developerLevel(resume.getDeveloperLevel()).rank(0).build());
+
+            } catch (Exception e) {
+                System.out.println("Failed to analyze user: " + username);
+            }
+
+        }
+
+//        SORT BY SCORE DESC
+
+        rankings.sort((a, b) -> Integer.compare(b.getScore(), a.getScore()));
+
+//        ASSIGN Ranks
+
+        for (int i = 0; i < rankings.size(); i++) {
+            rankings.get(i).setRank(i + 1);
+        }
+
+        return rankings;
+    }
 }
