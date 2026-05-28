@@ -3,11 +3,12 @@ package com.uday.github_analysis_service.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Data
 @Builder
-public class ResumeResponse {
+public class ResumeResponse implements Serializable {
 
     private String name;
 
