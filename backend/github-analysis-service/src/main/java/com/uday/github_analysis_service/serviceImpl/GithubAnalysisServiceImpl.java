@@ -3,11 +3,11 @@ package com.uday.github_analysis_service.serviceImpl;
 
 import com.uday.github_analysis_service.client.GithubClient;
 import com.uday.github_analysis_service.dto.*;
+import com.uday.github_analysis_service.exception.ResourceNotFoundException;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
 import com.uday.github_analysis_service.service.GithubAsyncService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfWriter;
@@ -153,19 +153,26 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     public ResumeResponse generateResume(String username) {
 
         System.out.println("Calling GitHub API...");
+        GithubUserResponse user;
+        List<GithubRepoResponse> repos;
 
-        //FETCH USER
         CompletableFuture<GithubUserResponse> userFuture = githubAsyncService.getGithubUserAsync(username);
 
-        //FETCH REPOSITORIES
         CompletableFuture<List<GithubRepoResponse>> repoFuture = githubAsyncService.getGithubReposAsync(username);
 
-        //WAIT FOR BOTH
-        CompletableFuture.allOf(userFuture, repoFuture).join();
+        try {
+            user = userFuture.join();
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("GitHub user not found");
+        }
 
-        //GET RESULTS
-        GithubUserResponse user = userFuture.join();
-        List<GithubRepoResponse> repos = repoFuture.join();
+
+        try {
+            repos = repoFuture.join();
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("Repositories not found");
+        }
+
 
         //TOP REPOSITORIES
         List<String> topRepositories = repos.stream().sorted((repo1, repo2) ->
