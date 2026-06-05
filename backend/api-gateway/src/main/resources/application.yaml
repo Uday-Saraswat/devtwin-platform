@@ -1,10 +1,4 @@
-server:
-  port: 8080
-
 spring:
-  application:
-    name: API-GATEWAY
-
   cloud:
     gateway:
       server:
@@ -23,15 +17,3 @@ spring:
                 - Path=/github/**
               filters:
                 - PreserveHostHeader
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka
-
-
-  instance:
-#    hostname: localhost
-
-
-    prefer-ip-address: true
