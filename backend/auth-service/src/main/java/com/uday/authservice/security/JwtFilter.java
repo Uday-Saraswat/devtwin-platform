@@ -28,6 +28,16 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
+        System.out.println("PATH = " + request.getServletPath());
+
+//        PUBLIC ENDPOINTS
+
+        String path = request.getRequestURI();
+        if (path.startsWith("/auth") || path.startsWith("/actuator")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;
@@ -53,11 +63,11 @@ public class JwtFilter extends OncePerRequestFilter {
 
             response.getWriter().write(
                     """
-                    {
-                      "success": false,
-                      "message": "Invalid or Expired Token"
-                    }
-                    """
+                            {
+                              "success": false,
+                              "message": "Invalid or Expired Token"
+                            }
+                            """
             );
 
             return;
