@@ -4,6 +4,7 @@ package com.uday.github_analysis_service.controller;
 import com.uday.github_analysis_service.dto.CommitConsistencyResponse;
 import com.uday.github_analysis_service.dto.DeveloperRankingResponse;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
+import com.uday.github_analysis_service.service.ResumeCacheService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -26,6 +27,8 @@ public class GithubAnalysisController {
 
     private final GithubAnalysisService githubAnalysisService;
 
+    private final ResumeCacheService resumeCacheService;
+
     @Operation(summary = "Analyze GitHub Profile",
             description = "Fetches GitHub profile details, repositories and developer insights.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Profile analyzed successfully"),
@@ -42,7 +45,7 @@ public class GithubAnalysisController {
             @ApiResponse(responseCode = "404", description = "GitHub user not found")})
     @GetMapping("/resume/{username}")
     public ResponseEntity<?> generateResume(@PathVariable String username) {
-        return ResponseEntity.ok(githubAnalysisService.generateResume(username));
+        return ResponseEntity.ok(resumeCacheService.generateResume(username));
     }
 
 

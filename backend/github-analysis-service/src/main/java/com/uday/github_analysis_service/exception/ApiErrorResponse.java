@@ -8,12 +8,16 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class ApiErrorResponse {
-    
+
     private boolean success;
+
+    private String error;
 
     private String message;
 
     private int status;
+
+    private String path;
 
     private LocalDateTime timestamp;
 }
