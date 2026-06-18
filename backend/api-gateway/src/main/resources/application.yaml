@@ -5,14 +5,14 @@ spring:
         webflux:
           routes:
             - id: auth-service
-              uri: lb://AUTH-SERVICE
+              uri: lb://auth-service
               predicates:
                 - Path=/auth/**
               filters:
                 - PreserveHostHeader
 
             - id: github-analysis-service
-              uri: lb://GITHUB-ANALYSIS-SERVICE
+              uri: lb://github-analysis-service
               predicates:
                 - Path=/github/**
               filters:

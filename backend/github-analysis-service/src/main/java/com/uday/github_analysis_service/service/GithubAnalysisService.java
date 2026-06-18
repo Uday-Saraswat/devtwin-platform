@@ -11,7 +11,7 @@ public interface GithubAnalysisService {
 
     public Map<String, Object> analyzeProfile(String username);
 
-    public ResumeResponse generateResume(String username);
+    public ResumeResponse buildResume(String username);
 
     public CommitConsistencyResponse getCommitConsistency(String username);
 

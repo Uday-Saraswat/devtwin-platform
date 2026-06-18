@@ -27,7 +27,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
          PUBLIC ROUTES
          */
 
-        if (path.contains("/auth/login") || path.contains("/auth/register")) {
+        if (path.contains("/auth/login") || path.contains("/auth/register") || path.contains("/actuator")) {
             return chain.filter(exchange);
         }
 

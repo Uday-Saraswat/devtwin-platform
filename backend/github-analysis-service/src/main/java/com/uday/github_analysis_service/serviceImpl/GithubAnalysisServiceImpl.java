@@ -3,9 +3,12 @@ package com.uday.github_analysis_service.serviceImpl;
 
 import com.uday.github_analysis_service.client.GithubClient;
 import com.uday.github_analysis_service.dto.*;
+import com.uday.github_analysis_service.exception.GithubApiException;
 import com.uday.github_analysis_service.exception.ResourceNotFoundException;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
 import com.uday.github_analysis_service.service.GithubAsyncService;
+import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -27,7 +30,26 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
 
     @Override
     public Map<String, Object> analyzeProfile(String username) {
-        List<GithubRepoResponse> repos = githubClient.getUserRepositories(username);
+
+        List<GithubRepoResponse> repos;
+        List<GithubEventResponse> events;
+
+        try {
+            repos = githubClient.getUserRepositories(username);
+            events = githubClient.getUserEvents(username);
+        } catch (FeignException.NotFound ex) {
+            throw new ResourceNotFoundException("GitHub user not found: " + username);
+
+        } catch (FeignException.Forbidden ex) {
+            throw new GithubApiException("GitHub API rate limit exceeded");
+
+        } catch (FeignException ex) {
+            throw new GithubApiException("GitHub API is unavailable");
+
+        } catch (Exception ex) {
+            throw new GithubApiException("Unexpected error occurred");
+        }
+
         int totalRepos = repos.size();
         int totalStars = repos.stream().mapToInt(GithubRepoResponse::getStargazers_count).sum();
         int totalForks = repos.stream().mapToInt(GithubRepoResponse::getForks_count).sum();
@@ -47,7 +69,7 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
 
         List<String> strengths = generateStrengths(totalRepos, totalStars, languages.size());
 
-        List<GithubEventResponse> events = githubClient.getUserEvents(username);
+//        List<GithubEventResponse> events = githubClient.getUserEvents(username);
 
         Map<String, Object> consistencyData = analyzeConsistency(events);
 
@@ -149,8 +171,10 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     }
 
     @Override
-    @Cacheable(value = "resume", key = "#username")
-    public ResumeResponse generateResume(String username) {
+    @CircuitBreaker(name = "githubApi", fallbackMethod = "resumeFallback")
+    public ResumeResponse buildResume(String username) {
+
+        System.out.println("BUILD RESUME STARTED");
 
         System.out.println("Calling GitHub API...");
         GithubUserResponse user;
@@ -163,16 +187,19 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
         try {
             user = userFuture.join();
         } catch (Exception e) {
-            throw new ResourceNotFoundException("GitHub user not found");
+            Throwable cause = e.getCause();
+            if (cause instanceof FeignException.NotFound) {
+                throw new ResourceNotFoundException("GitHub user not found: " + username);
+            }
+            throw new GithubApiException("Failed to fetch GitHub user");
         }
 
 
         try {
             repos = repoFuture.join();
         } catch (Exception e) {
-            throw new ResourceNotFoundException("Repositories not found");
+            throw new GithubApiException("Failed to fetch repositories");
         }
-
 
         //TOP REPOSITORIES
         List<String> topRepositories = repos.stream().sorted((repo1, repo2) ->
@@ -205,8 +232,16 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     @Override
     @Cacheable(value = "commitConsistency", key = "#username")
     public CommitConsistencyResponse getCommitConsistency(String username) {
-        List<GithubEventResponse> events = githubClient.getUserEvents(username);
-
+        List<GithubEventResponse> events;
+        try {
+            events = githubClient.getUserEvents(username);
+        } catch (FeignException.NotFound ex) {
+            throw new ResourceNotFoundException("GitHub user not found");
+        } catch (FeignException.Forbidden ex) {
+            throw new GithubApiException("GitHub API rate limit exceeded");
+        } catch (FeignException ex) {
+            throw new GithubApiException("GitHub API unavailable");
+        }
         //Total Events
         int totalEvents = events.size();
 
@@ -243,7 +278,7 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     @Override
     public byte[] generateResumePdf(String username) {
 
-        ResumeResponse resume = generateResume(username);
+        ResumeResponse resume = buildResume(username);
 
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -295,7 +330,7 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
             return outputStream.toByteArray();
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate PDF");
+            throw new GithubApiException("Failed to generate PDF resume");
         }
     }
 
@@ -308,14 +343,14 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
 
             try {
 
-                ResumeResponse resume = generateResume(username);
+                ResumeResponse resume = buildResume(username);
                 rankings.add(DeveloperRankingResponse.builder()
                         .username(username)
                         .score(resume.getDeveloperScore())
                         .developerLevel(resume.getDeveloperLevel()).rank(0).build());
 
             } catch (Exception e) {
-                System.out.println("Failed to analyze user: " + username);
+                throw new GithubApiException("Failed to rank developers");
             }
 
         }
@@ -331,5 +366,14 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
         }
 
         return rankings;
+    }
+
+    public ResumeResponse resumeFallback(String username, Throwable ex) {
+        System.out.println("FALLBACK EXECUTED");
+        ex.printStackTrace();
+        return ResumeResponse.builder().name("Unavailable").githubUsername(username)
+                .bio("GitHub service temporarily unavailable").developerLevel("Unknown")
+                .developerScore(0)
+                .publicRepos(0).followers(0).build();
     }
 }
