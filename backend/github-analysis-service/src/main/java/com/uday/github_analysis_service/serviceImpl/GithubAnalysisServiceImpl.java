@@ -7,8 +7,8 @@ import com.uday.github_analysis_service.exception.GithubApiException;
 import com.uday.github_analysis_service.exception.ResourceNotFoundException;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
 import com.uday.github_analysis_service.service.GithubAsyncService;
-import com.uday.github_analysis_service.service.ResumeCacheService;
 import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -171,7 +171,10 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     }
 
     @Override
+    @CircuitBreaker(name = "githubApi", fallbackMethod = "resumeFallback")
     public ResumeResponse buildResume(String username) {
+
+        System.out.println("BUILD RESUME STARTED");
 
         System.out.println("Calling GitHub API...");
         GithubUserResponse user;
@@ -363,5 +366,14 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
         }
 
         return rankings;
+    }
+
+    public ResumeResponse resumeFallback(String username, Throwable ex) {
+        System.out.println("FALLBACK EXECUTED");
+        ex.printStackTrace();
+        return ResumeResponse.builder().name("Unavailable").githubUsername(username)
+                .bio("GitHub service temporarily unavailable").developerLevel("Unknown")
+                .developerScore(0)
+                .publicRepos(0).followers(0).build();
     }
 }

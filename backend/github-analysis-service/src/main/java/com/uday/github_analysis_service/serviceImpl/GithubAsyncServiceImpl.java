@@ -4,6 +4,7 @@ import com.uday.github_analysis_service.client.GithubClient;
 import com.uday.github_analysis_service.dto.GithubRepoResponse;
 import com.uday.github_analysis_service.dto.GithubUserResponse;
 import com.uday.github_analysis_service.service.GithubAsyncService;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ public class GithubAsyncServiceImpl implements GithubAsyncService {
 
     @Override
     @Async
+    @Retry(name = "githubApi")
     public CompletableFuture<GithubUserResponse> getGithubUserAsync(String username) {
         System.out.println(Thread.currentThread().getName());
         GithubUserResponse user = githubClient.getUser(username);
@@ -27,6 +29,7 @@ public class GithubAsyncServiceImpl implements GithubAsyncService {
 
     @Override
     @Async
+    @Retry(name = "githubApi")
     public CompletableFuture<List<GithubRepoResponse>> getGithubReposAsync(String username) {
         System.out.println(Thread.currentThread().getName());
         List<GithubRepoResponse> repos = githubClient.getUserRepositories(username);
