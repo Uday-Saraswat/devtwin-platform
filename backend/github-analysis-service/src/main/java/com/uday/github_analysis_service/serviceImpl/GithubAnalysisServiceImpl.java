@@ -14,6 +14,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfWriter;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import java.io.ByteArrayOutputStream;
 import java.util.*;
@@ -27,6 +29,10 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     private final GithubClient githubClient;
 
     private final GithubAsyncService githubAsyncService;
+
+    private final Counter resumeGeneratedCounter;
+
+    private final Counter githubApiCallsCounter;
 
     @Override
     public Map<String, Object> analyzeProfile(String username) {
@@ -173,6 +179,7 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     @Override
     @CircuitBreaker(name = "githubApi", fallbackMethod = "resumeFallback")
     public ResumeResponse buildResume(String username) {
+        githubApiCallsCounter.increment();
 
         System.out.println("BUILD RESUME STARTED");
 
@@ -278,6 +285,7 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     @Override
     public byte[] generateResumePdf(String username) {
 
+        resumeGeneratedCounter.increment();
         ResumeResponse resume = buildResume(username);
 
         try {
