@@ -3,8 +3,10 @@ package com.uday.github_analysis_service.serviceImpl;
 
 import com.uday.github_analysis_service.client.GithubClient;
 import com.uday.github_analysis_service.dto.*;
+import com.uday.github_analysis_service.eventDto.ResumeGeneratedEvent;
 import com.uday.github_analysis_service.exception.GithubApiException;
 import com.uday.github_analysis_service.exception.ResourceNotFoundException;
+import com.uday.github_analysis_service.kafka.ResumeEventProducer;
 import com.uday.github_analysis_service.service.GithubAnalysisService;
 import com.uday.github_analysis_service.service.GithubAsyncService;
 import feign.FeignException;
@@ -33,6 +35,8 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
     private final Counter resumeGeneratedCounter;
 
     private final Counter githubApiCallsCounter;
+
+    private final ResumeEventProducer resumeEventProducer;
 
     @Override
     public Map<String, Object> analyzeProfile(String username) {
@@ -226,6 +230,15 @@ public class GithubAnalysisServiceImpl implements GithubAnalysisService {
 
         // DEVELOPER LEVEL
         String developerLevel = getDeveloperLevel(developerScore);
+
+        ResumeGeneratedEvent event = ResumeGeneratedEvent.builder()
+                        .username(username)
+                        .developerScore(developerScore)
+                        .developerLevel(developerLevel)
+                        .build();
+
+        resumeEventProducer.publishResumeGeneratedEvent(event);
+
 
         //BUILD RESPONSE
 
